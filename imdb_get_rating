@@ -1,0 +1,9 @@
+import requests
+
+def get_imdb(movie):
+    url = 'http://www.omdbapi.com/?apikey=72bc447a&t=' + movie
+    r = requests.get(url)
+    json_data = r.json()
+    print([json_data[k] for k in json_data if k == 'imdbRating'])
+        
+get_imdb('zoolander')
