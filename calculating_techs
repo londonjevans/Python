@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Dec 19 10:04:08 2019
+
+@author: josevans
+"""
+
+import numpy as np
+import pandas as pd
+from pandas_datareader.data import DataReader
+from datetime import date
+import matplotlib.pyplot as plt
+from sklearn.linear_model import Lasso
+from sklearn.neighbors import KNeighborsClassifier
+from scipy.spatial.distance import cdist
+from sklearn.cluster import KMeans
+from sklearn import preprocessing
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from skmultilearn.model_selection import iterative_train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+start = date(1968, 1, 1)
+series = 'GOLDAMGBD228NLBM'
+gold_price = DataReader(series, 'fred', start)
+gold_price = gold_price.rename(columns={'GOLDAMGBD228NLBM': 'Price'}).dropna()
+gold_price.plot(title='Gold Price')
+plt.show()
+
+def calc_rsi(df, period):
+    delta = df.Price.diff()
+    window = period
+    up_days = delta.copy()
+    up_days[delta<=0]=0.0
+    down_days = abs(delta.copy())
+    down_days[delta>0]=0.0
+    RS_up = up_days.rolling(window).mean()
+    RS_down = down_days.rolling(window).mean()
+    rsi= 100-100/(1+RS_up/RS_down)
+
+    df['RSI'] = rsi
+   
+
+def calc_period_gain(df, period):
+        new_df = df
+        new_df['pct_chg'] = df.Price.pct_change(periods=period) * -100
+        return new_df
+    
+    
+
+calc_rsi(gold_price, 15)
+df_1 = calc_period_gain(gold_price, -1).dropna()
+df_2 = calc_period_gain(gold_price, -2).dropna()
+df_3 = calc_period_gain(gold_price, -3).dropna()
+df_4 = calc_period_gain(gold_price, -4).dropna()
+df_5 = calc_period_gain(gold_price, -5).dropna()
+df_6 = calc_period_gain(gold_price, -6).dropna()
+df_7 = calc_period_gain(gold_price, -7).dropna()
+df_8 = calc_period_gain(gold_price, -8).dropna()
+df_9 = calc_period_gain(gold_price, -9).dropna()
+df_10 = calc_period_gain(gold_price, -10).dropna()
+df_11 = calc_period_gain(gold_price, -11).dropna()
+df_12 = calc_period_gain(gold_price, -12).dropna()
+df_13 = calc_period_gain(gold_price, -13).dropna()
+df_14 = calc_period_gain(gold_price, -14).dropna()
+df_15 = calc_period_gain(gold_price, -15).dropna()
+df_16 = calc_period_gain(gold_price, -16).dropna()
+df_17 = calc_period_gain(gold_price, -17).dropna()
+df_18 = calc_period_gain(gold_price, -18).dropna()
+df_19 = calc_period_gain(gold_price, -19).dropna()
+df_20 = calc_period_gain(gold_price, -20).dropna()
+df_30 = calc_period_gain(gold_price, -30).dropna()
+df_45 = calc_period_gain(gold_price, -45).dropna()
+df_60 = calc_period_gain(gold_price, -60).dropna()
+df_90 = calc_period_gain(gold_price, -90).dropna()
+df_120 = calc_period_gain(gold_price, -120).dropna()
+df_180 = calc_period_gain(gold_price, -180).dropna()
+df_240 = calc_period_gain(gold_price, -240).dropna()
+df_360 = calc_period_gain(gold_price, -360).dropna()
+df_720 = calc_period_gain(gold_price, -720).dropna()
+
+
+list_dfs = [df_1, df_2, df_3, df_4, df_5, df_6, df_7, df_8, df_9, df_10, df_11, df_12, df_13, df_14, df_15, df_16, df_17, df_18, df_19, df_20, df_30, df_45, df_60, df_90, df_120, df_180, df_240, df_360, df_720]
+list_dfs_gld = []
+
+
+def create_new_dfs_list(new_list_dfs, func, df):
+    for i in range(1, 30):
+        df = func(df, i * -1)
+        new_list_dfs.append(df)
+    return new_list_dfs   
+
+create_new_dfs_list(list_dfs_gld, calc_period_gain, gold_price)
+
+def lass_reg(df, alpha):
+    df = df.dropna()
+    lasso = Lasso(alpha=alpha, normalize=True)
+
+    X = df.drop('Price', axis=1).values
+    y = df.Price.values
+    cols = df.drop('Price', axis=1).columns
+    
+    lasso_coef = lasso.fit(X, y).coef_
+    
+    _ = plt.plot(range(len(cols)), lasso_coef)
+    _ = plt.xticks(range(len(cols)), cols, rotation=60)
+    _ = plt.ylabel('Coefficients')
+    plt.show()
+
+
+def pred_values(df, neighbors, num_preds):
+    from random import seed
+    from random import gauss
+    seed(num_preds)
+    
+    df = df.dropna()
+    
+    X = df.RSI.astype(int).values.reshape(-1, 1)
+    y = df.pct_chg.astype(int).values.reshape(-1, 1)
+    
+    knn = KNeighborsClassifier(n_neighbors=neighbors)
+    
+    knn.fit(X, y)
+    
+    y_pred = knn.predict(X)
+    
+    X_new = np.empty(num_preds)
+    
+    for i in range(num_preds):
+       
+       X_new[i] = gauss(51.079864, 16.632534)
+    
+    X_new = X_new.reshape(-1, 1)
+    new_prediction = knn.predict(X_new).reshape(-1, 1)
+    X_new = np.column_stack((X_new, new_prediction))
+    X_new = pd.DataFrame(X_new, columns=['RSI', 'Prediction'])
+    print(X_new)
+   
+
+
+def elbow(df):
+    
+    df = df.dropna()
+    
+    cluster1 = np.random.uniform(0.5, 1.5, (2, 10))
+    cluster2 = np.random.uniform(3.5, 4.5, (2, 10))
+
+    X = df.RSI.astype(int).values.reshape(-1, 1)
+    y = df.pct_chg.astype(int).values.reshape(-1, 1)
+    
+    print(X)
+    print(y)
+    
+    Z = np.hstack((cluster1, cluster2)).T
+    Z = np.vstack((X, y)).T
+    
+    K = range(1, 30)
+    meandistortions = []
+    
+    for k in K:
+        kmeans = KMeans(n_clusters=k)
+        kmeans.fit(Z)
+        meandistortions.append(sum(np.min(cdist(Z, kmeans.cluster_centers_, 'euclidean'), axis=1 // X.shape[0])))
+        plt.plot(K, meandistortions, 'bx-')
+        plt.xlabel('k')
+        plt.ylabel('Average distortion')
+        plt.title('Selecting k with the Elbow Method')
+        plt.show()
+        
+def optimise_k(df):
+    df = df.dropna()
+    
+    X = df.RSI.astype(int).values.reshape(-1, 1)
+    y = df.pct_chg.astype(int).values.reshape(-1, 1)
+
+    
+    X_train, X_test, y_train, y_test = iterative_train_test_split(X, y, test_size = 0.25)
+
+    for i in range(1,75):
+        knn = KNeighborsClassifier(n_neighbors = i)
+        modelKnn = knn.fit(X_train, X_test)
+        predKnn = modelKnn.predict(y_train)
+        w = accuracy_score(predKnn, y_test)
+        print(i)
+        print(w)
+
+def calc_accuracy(df):
+    df = df.dropna()
+    
+    X = df.RSI.astype(int).values.reshape(-1, 1)
+    y = df.pct_chg.astype(int).values.reshape(-1, 1)
+    
+    X_train, X_test, y_train, y_test = iterative_train_test_split(X, y, test_size = 0.25)
+    knn = KNeighborsClassifier(n_neighbors = 46)
+    modelKnn = knn.fit(X_train, X_test)
+    predKnn = modelKnn.predict(y_train)
+    w = accuracy_score(predKnn, y_test)
+    print(w)
+       
+calc_accuracy(df_1)        
+    
+def corr_coef_rsi(df):
+    print(np.corrcoef(df.RSI, df.pct_chg))
+    
+def calc_linear_regression(df):
+    df = df.dropna()
+    
+    X = df.RSI.astype(int).values.reshape(-1, 1)
+    y = df.pct_chg.astype(int).values.reshape(-1, 1)
+    
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3)
+    
+    reg_all = LinearRegression()
+    
+    reg_all.fit(X_train, y_train)
+    
+    y_pred = reg_all.predict(X_test)
+    
+    print('R^2: {}'.format(reg_all.score(X_test, y_test)))
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    print('Root Mean Squared Error: {}'.format(rmse))
+    print(np.corrcoef(df.RSI, df.pct_chg))
+
+cmp_lt = lambda x,y: x < y
+cmp_gt = lambda x,y: x > y
+cmp_eq = lambda x,y: x == y
+cmp_lte = lambda x,y: x <= y
+cmp_gte = lambda x,y: x >= y
+cmp_neq = lambda x,y: x != y
+
+           
+
+print(df_9.loc[df_9.RSI > 80].pct_chg.describe())
+print(df_8.loc[df_8.RSI > 80].pct_chg.describe())
+print(df_7.loc[df_7.RSI > 80].pct_chg.describe())
+print(df_6.loc[df_6.RSI > 80].pct_chg.describe())
+print(df_5.loc[df_5.RSI > 80].pct_chg.describe())
+print(df_4.loc[df_4.RSI > 80].pct_chg.describe())
+print(df_3.loc[df_3.RSI > 80].pct_chg.describe())
+print(df_2.loc[df_2.RSI > 80].pct_chg.describe())
+print(df_1.loc[df_1.RSI > 80].pct_chg.describe())
+print(df_10.loc[df_10.RSI > 80].pct_chg.describe())
+
+def df_list_func(lst, func):
+    for df in list_dfs:
+        func(df)
+
+df_list_func(list_dfs, calc_accuracy)
